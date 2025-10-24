@@ -1738,7 +1738,7 @@ function generateFilterSidebar(headers) {
           const manualInput = document.createElement('input');
           manualInput.type = 'text';
           manualInput.className = 'manual-filter-input';
-          manualInput.placeholder = 'Enter values: "value1", "value2" or value1, value2';
+          manualInput.placeholder = 'Escribe valores: "valor1", "valor2" o valor1, valor2';
           manualInput.style.width = 'calc(100% - 100px)';
           manualInput.style.padding = '0.3rem 0.5rem';
           manualInput.style.border = '1px solid rgba(71, 178, 229, 0.3)';
