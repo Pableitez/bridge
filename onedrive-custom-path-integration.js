@@ -702,6 +702,130 @@ class OneDriveCustomPathIntegration {
         }
     }
     
+    // ===== CSV SPECIFIC FUNCTIONS =====
+    
+    // Save CSV to OneDrive
+    async saveCsv(csvContent, filename, teamId = null) {
+        try {
+            console.log(`💾 Saving CSV to OneDrive: ${filename}`);
+            
+            // Create CSV folder path
+            const csvFolder = teamId ? `TheBridge/teams/${teamId}/csv` : 'TheBridge/csv';
+            const filePath = `${csvFolder}/${filename}`;
+            
+            // Ensure CSV folder exists
+            await this.ensureFolder(csvFolder);
+            
+            // Save CSV file
+            const result = await this.saveFile(filePath, csvContent);
+            
+            console.log(`✅ CSV saved successfully: ${filename}`);
+            return {
+                success: true,
+                path: filePath,
+                filename: filename,
+                teamId: teamId
+            };
+        } catch (error) {
+            console.error('❌ Error saving CSV to OneDrive:', error);
+            throw error;
+        }
+    }
+    
+    // Load CSV from OneDrive
+    async loadCsv(filename, teamId = null) {
+        try {
+            console.log(`📂 Loading CSV from OneDrive: ${filename}`);
+            
+            // Create CSV folder path
+            const csvFolder = teamId ? `TheBridge/teams/${teamId}/csv` : 'TheBridge/csv';
+            const filePath = `${csvFolder}/${filename}`;
+            
+            // Load CSV file
+            const content = await this.loadFile(filePath);
+            
+            console.log(`✅ CSV loaded successfully: ${filename}`);
+            return {
+                success: true,
+                content: content,
+                filename: filename,
+                teamId: teamId
+            };
+        } catch (error) {
+            console.error('❌ Error loading CSV from OneDrive:', error);
+            throw error;
+        }
+    }
+    
+    // List CSV files in OneDrive
+    async listCsvs(teamId = null) {
+        try {
+            console.log(`📋 Listing CSVs from OneDrive`);
+            
+            const csvFolder = teamId ? `TheBridge/teams/${teamId}/csv` : 'TheBridge/csv';
+            
+            if (!this.isAuthenticated) {
+                throw new Error('Not authenticated with OneDrive');
+            }
+            
+            const token = await this.getToken();
+            
+            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${csvFolder}:/children`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to list files: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            const csvFiles = data.value.filter(file => 
+                file.name.toLowerCase().endsWith('.csv')
+            );
+            
+            console.log(`✅ Found ${csvFiles.length} CSV files`);
+            return csvFiles;
+        } catch (error) {
+            console.error('❌ Error listing CSVs from OneDrive:', error);
+            throw error;
+        }
+    }
+    
+    // Delete CSV from OneDrive
+    async deleteCsv(filename, teamId = null) {
+        try {
+            console.log(`🗑️ Deleting CSV from OneDrive: ${filename}`);
+            
+            const csvFolder = teamId ? `TheBridge/teams/${teamId}/csv` : 'TheBridge/csv';
+            const filePath = `${csvFolder}/${filename}`;
+            
+            if (!this.isAuthenticated) {
+                throw new Error('Not authenticated with OneDrive');
+            }
+            
+            const token = await this.getToken();
+            
+            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to delete file: ${response.statusText}`);
+            }
+            
+            console.log(`✅ CSV deleted successfully: ${filename}`);
+            return { success: true, filename: filename };
+        } catch (error) {
+            console.error('❌ Error deleting CSV from OneDrive:', error);
+            throw error;
+        }
+    }
+    
     // Ensure folder exists
     async ensureFolder(folderPath) {
         try {
@@ -806,6 +930,56 @@ window.createOneDriveBackupCustom = async function(customPath) {
 
 window.migrateOneDriveData = async function(oldPath, newPath) {
     return await window.oneDriveCustomPath.migrateData(oldPath, newPath);
+};
+
+// ===== GLOBAL CSV FUNCTIONS =====
+
+// Global functions for CSV operations
+window.saveCsvToOneDrive = async function(csvContent, filename, teamId = null) {
+    if (!window.oneDriveIntegration) {
+        throw new Error('OneDrive integration not available');
+    }
+    return await window.oneDriveIntegration.saveCsv(csvContent, filename, teamId);
+};
+
+window.loadCsvFromOneDrive = async function(filename, teamId = null) {
+    if (!window.oneDriveIntegration) {
+        throw new Error('OneDrive integration not available');
+    }
+    return await window.oneDriveIntegration.loadCsv(filename, teamId);
+};
+
+window.listCsvsFromOneDrive = async function(teamId = null) {
+    if (!window.oneDriveIntegration) {
+        throw new Error('OneDrive integration not available');
+    }
+    return await window.oneDriveIntegration.listCsvs(teamId);
+};
+
+window.deleteCsvFromOneDrive = async function(filename, teamId = null) {
+    if (!window.oneDriveIntegration) {
+        throw new Error('OneDrive integration not available');
+    }
+    return await window.oneDriveIntegration.deleteCsv(filename, teamId);
+};
+
+// Auto-sync CSV when saved locally
+window.autoSyncCsvToOneDrive = async function(csvContent, filename, teamId = null) {
+    try {
+        console.log('🔄 Auto-syncing CSV to OneDrive...');
+        
+        // Save to OneDrive
+        const result = await window.saveCsvToOneDrive(csvContent, filename, teamId);
+        
+        if (result.success) {
+            console.log('✅ CSV auto-synced to OneDrive successfully');
+            return result;
+        }
+    } catch (error) {
+        console.warn('⚠️ Auto-sync to OneDrive failed:', error);
+        // Don't throw error, just log warning
+        return { success: false, error: error.message };
+    }
 };
 
 console.log('🔧 OneDrive Custom Path Integration loaded and ready'); 
