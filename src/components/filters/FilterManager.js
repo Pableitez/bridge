@@ -1738,7 +1738,8 @@ function generateFilterSidebar(headers) {
           const manualInput = document.createElement('input');
           manualInput.type = 'text';
           manualInput.className = 'manual-filter-input';
-          manualInput.placeholder = 'Formato: "valor1", "valor2" | valor1, valor2 | valor1; valor2 | valor1 | valor2';
+          manualInput.placeholder = '"value1", "value2" or value1, value2';
+          manualInput.title = 'Format examples:\n• "value1", "value2" (with quotes for spaces)\n• value1, value2 (comma separated)\n• value1; value2 (semicolon separated)\n• value1 | value2 (pipe separated)\n• Single value: value1';
           manualInput.style.width = 'calc(100% - 100px)';
           manualInput.style.padding = '0.3rem 0.5rem';
           manualInput.style.border = '1px solid rgba(71, 178, 229, 0.3)';
