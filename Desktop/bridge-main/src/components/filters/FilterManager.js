@@ -1567,6 +1567,9 @@ function generateFilterSidebar(headers) {
               filterDiv.classList.toggle('active', selectedSet.size > 0);
               updateActiveFiltersSummary();
               updateInputSummary();
+              // Apply filters immediately when No Empty is toggled
+              applyFilters();
+              renderActiveFiltersSummaryChips();
             });
             list.appendChild(noEmptyBtn2);
             const MAX_OPTIONS = 200;
