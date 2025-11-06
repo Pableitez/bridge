@@ -2441,6 +2441,11 @@ function applyFilters() {
 
     // Aplicar filtros del módulo
     Object.entries(moduleActiveFilters).forEach(([column, filterType]) => {
+        // Debug: Check if column has __NO_EMPTY__ in filterValues
+        const filterValue = moduleFilterValues[column];
+        if (Array.isArray(filterValue) && filterValue.includes('__NO_EMPTY__')) {
+            console.log(`[DEBUG] Column "${column}" has __NO_EMPTY__ filter. filterType: ${filterType}, value:`, filterValue);
+        }
         if (filterType === 'date') {
             const arr = Array.isArray(moduleFilterValues[column]) ? moduleFilterValues[column] : null;
             const hasRange = moduleFilterValues[`${column}_start`] || moduleFilterValues[`${column}_end`] || moduleFilterValues[`${column}_empty`] || moduleFilterValues[`${column}_no_empty`];
@@ -2505,8 +2510,14 @@ function applyFilters() {
             const value = moduleFilterValues[column];
             const isNotFilter = moduleFilterValues[`${column}_not`];
             // Allow filtering even if only __NO_EMPTY__ or __EMPTY__ is selected
-            if (!value) return;
-            if (Array.isArray(value) && value.length === 0) return;
+            if (!value) {
+                console.log(`[DEBUG] Column "${column}" has no value, skipping filter`);
+                return;
+            }
+            if (Array.isArray(value) && value.length === 0) {
+                console.log(`[DEBUG] Column "${column}" has empty array, skipping filter`);
+                return;
+            }
             // Special case: if array only contains __NO_EMPTY__ or __EMPTY__, still apply filter
             // This is important - we want to filter when only these markers are selected
             if (Array.isArray(value)) {
