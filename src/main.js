@@ -2925,8 +2925,20 @@ function renderDashboardQuickFilters() {
   // Agrupar filtros por contenedor
   Object.entries(quickFilters).forEach(([name, filterObj]) => {
     // Solo incluir si tiene un campo container definido y no vacío
-    if (!filterObj.container || filterObj.container === '') return;
+    // Si no tiene container, usar el default según el hub
+    if (!filterObj.container || filterObj.container === '') {
+      // Asignar container por defecto si no tiene uno
+      filterObj.container = hubType === 'dq' ? 'dq-default' : 'default';
+    }
     const key = filterObj.container;
+    
+    // Debug: Log if filter has NOT states
+    if (filterObj.filterValues) {
+      const hasNotStates = Object.keys(filterObj.filterValues).some(k => k.endsWith('_not'));
+      if (hasNotStates) {
+        console.log(`[DEBUG] Quick filter "${name}" has NOT states, container: ${key}`);
+      }
+    }
     if (!grouped[key]) {
       grouped[key] = { 
         title: filterObj.containerTitle || key.replace('container', 'Container '),
