@@ -2508,13 +2508,14 @@ function applyFilters() {
             if (!value) return;
             if (Array.isArray(value) && value.length === 0) return;
             // Special case: if array only contains __NO_EMPTY__ or __EMPTY__, still apply filter
-            if (Array.isArray(value) && value.length === 1 && (value[0] === '__NO_EMPTY__' || value[0] === '__EMPTY__')) {
-                // Continue to apply filter
-            } else if (Array.isArray(value) && value.length > 0) {
-                // Check if array has any real values (not just markers)
+            // This is important - we want to filter when only these markers are selected
+            if (Array.isArray(value)) {
+                const hasNoEmpty = value.includes('__NO_EMPTY__');
+                const hasEmpty = value.includes('__EMPTY__');
                 const hasRealValues = value.some(v => v !== '__NO_EMPTY__' && v !== '__EMPTY__');
-                if (!hasRealValues && !value.includes('__NO_EMPTY__') && !value.includes('__EMPTY__')) {
-                    return; // No real values and no special markers
+                // If we have special markers OR real values, continue filtering
+                if (!hasNoEmpty && !hasEmpty && !hasRealValues) {
+                    return; // No markers and no real values, skip this filter
                 }
             }
             filteredData = filteredData.filter(row => {
@@ -2540,6 +2541,10 @@ function applyFilters() {
                                 // __NO_EMPTY__ + other values: cell must match one of the selected values
                                 matches = actualValues.includes(cellValue?.toString());
                             }
+                        }
+                        // Debug log
+                        if (column === 'SAP Shipment Number S1' || column.includes('SAP')) {
+                            console.log(`[NO_EMPTY Filter] Column: ${column}, isEmpty: ${isEmpty}, cellValue: "${cellValue}", actualValues:`, actualValues, `matches: ${matches}`);
                         }
                     }
                     // Handle __EMPTY__ filter
