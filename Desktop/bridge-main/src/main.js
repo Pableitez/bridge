@@ -6710,13 +6710,19 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Execute all necessary setup functions
       setTimeout(() => {
-        setupQuickActions();
-        renderDashboardQuickFilters();
-        if (typeof renderDashboardCharts === 'function') {
-          renderDashboardCharts();
-        }
-        if (typeof updateDashboardKpis === 'function') {
-          // updateDashboardKpis(); // KPIs section removed
+        try {
+          setupQuickActions();
+          renderDashboardQuickFilters();
+          renderOpsHubFilterChips(); // Render urgency cards
+          if (typeof renderDashboardCharts === 'function') {
+            renderDashboardCharts();
+          }
+          if (typeof updateDashboardKpis === 'function') {
+            // updateDashboardKpis(); // KPIs section removed
+          }
+          console.log('✅ Operations Hub content rendered successfully');
+        } catch (error) {
+          console.error('❌ Error rendering Operations Hub content:', error);
         }
       }, 100);
     });
