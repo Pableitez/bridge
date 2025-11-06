@@ -2904,15 +2904,42 @@ function renderDashboardQuickFilters() {
   }
 
   // Cargar filtros guardados según el hub activo
-  const allQuickFilters = loadQuickFilters();
+  let allQuickFilters = {};
+  try {
+    allQuickFilters = loadQuickFilters();
+  } catch (error) {
+    console.error('❌ Error loading quick filters:', error);
+    allQuickFilters = {};
+  }
+  
   const quickFilters = Object.entries(allQuickFilters)
     .filter(([name, filter]) => {
-      // For backward compatibility: if hubType is not defined, consider it as 'ops'
-      const filterHubType = filter.hubType || 'ops';
-      return filterHubType === hubType;
+      try {
+        // For backward compatibility: if hubType is not defined, consider it as 'ops'
+        if (!filter || typeof filter !== 'object') {
+          console.warn(`⚠️ Invalid filter object for "${name}", skipping`);
+          return false;
+        }
+        const filterHubType = filter.hubType || 'ops';
+        return filterHubType === hubType;
+      } catch (error) {
+        console.error(`❌ Error processing filter "${name}":`, error);
+        return false;
+      }
     })
     .reduce((acc, [name, filter]) => {
-      acc[name] = filter;
+      try {
+        // Validate filter structure before adding
+        if (filter && typeof filter === 'object') {
+          // Ensure filterValues exists
+          if (!filter.filterValues) filter.filterValues = {};
+          // Ensure activeFilters exists
+          if (!filter.activeFilters) filter.activeFilters = {};
+          acc[name] = filter;
+        }
+      } catch (error) {
+        console.error(`❌ Error adding filter "${name}" to collection:`, error);
+      }
       return acc;
     }, {});
   const grouped = {};
@@ -2924,31 +2951,45 @@ function renderDashboardQuickFilters() {
   
   // Agrupar filtros por contenedor
   Object.entries(quickFilters).forEach(([name, filterObj]) => {
-    // Solo incluir si tiene un campo container definido y no vacío
-    // Si no tiene container, usar el default según el hub
-    if (!filterObj.container || filterObj.container === '') {
-      // Asignar container por defecto si no tiene uno
-      filterObj.container = hubType === 'dq' ? 'dq-default' : 'default';
-    }
-    const key = filterObj.container;
-    
-    // Debug: Log if filter has NOT states
-    if (filterObj.filterValues) {
-      const hasNotStates = Object.keys(filterObj.filterValues).some(k => k.endsWith('_not'));
-      if (hasNotStates) {
-        console.log(`[DEBUG] Quick filter "${name}" has NOT states, container: ${key}`);
+    try {
+      // Validate filterObj structure
+      if (!filterObj || typeof filterObj !== 'object') {
+        console.warn(`⚠️ Invalid filterObj for "${name}", skipping`);
+        return;
       }
+      
+      // Ensure filterValues and activeFilters exist
+      if (!filterObj.filterValues) filterObj.filterValues = {};
+      if (!filterObj.activeFilters) filterObj.activeFilters = {};
+      
+      // Solo incluir si tiene un campo container definido y no vacío
+      // Si no tiene container, usar el default según el hub
+      if (!filterObj.container || filterObj.container === '') {
+        // Asignar container por defecto si no tiene uno
+        filterObj.container = hubType === 'dq' ? 'dq-default' : 'default';
+      }
+      const key = filterObj.container;
+      
+      // Debug: Log if filter has NOT states
+      if (filterObj.filterValues) {
+        const hasNotStates = Object.keys(filterObj.filterValues).some(k => k.endsWith('_not'));
+        if (hasNotStates) {
+          console.log(`[DEBUG] Quick filter "${name}" has NOT states, container: ${key}`);
+        }
+      }
+      if (!grouped[key]) {
+        grouped[key] = { 
+          title: filterObj.containerTitle || key.replace('container', 'Container '),
+          filters: [] 
+        };
+      } else if (filterObj.containerTitle) {
+        // Actualizar el título si hay uno personalizado
+        grouped[key].title = filterObj.containerTitle;
+      }
+      grouped[key].filters.push({ name, filterObj });
+    } catch (error) {
+      console.error(`❌ Error processing quick filter "${name}" for grouping:`, error);
     }
-    if (!grouped[key]) {
-      grouped[key] = { 
-        title: filterObj.containerTitle || key.replace('container', 'Container '),
-        filters: [] 
-      };
-    } else if (filterObj.containerTitle) {
-      // Actualizar el título si hay uno personalizado
-      grouped[key].title = filterObj.containerTitle;
-    }
-    grouped[key].filters.push({ name, filterObj });
   });
 
   // Obtener columnas actuales para validación
@@ -6528,15 +6569,43 @@ function applyOpsHubQuickFilters() {
     return;
   }
   // Load only Ops Hub quick filters
-  const allQuickFilters = JSON.parse(localStorage.getItem('quickFilters')) || {};
+  let allQuickFilters = {};
+  try {
+    const saved = localStorage.getItem('quickFilters');
+    if (saved) {
+      allQuickFilters = JSON.parse(saved);
+    }
+  } catch (error) {
+    console.error('❌ Error parsing quick filters from localStorage:', error);
+    allQuickFilters = {};
+  }
+  
   const quickFiltersObj = Object.entries(allQuickFilters)
     .filter(([name, filter]) => {
-      // For backward compatibility: if hubType is not defined, consider it as 'ops'
-      const filterHubType = filter.hubType || 'ops';
-      return filterHubType === 'ops';
+      try {
+        if (!filter || typeof filter !== 'object') {
+          console.warn(`⚠️ Invalid filter object for "${name}", skipping`);
+          return false;
+        }
+        // For backward compatibility: if hubType is not defined, consider it as 'ops'
+        const filterHubType = filter.hubType || 'ops';
+        return filterHubType === 'ops';
+      } catch (error) {
+        console.error(`❌ Error processing filter "${name}":`, error);
+        return false;
+      }
     })
     .reduce((acc, [name, filter]) => {
-      acc[name] = filter;
+      try {
+        // Validate and ensure filter structure
+        if (filter && typeof filter === 'object') {
+          if (!filter.filterValues) filter.filterValues = {};
+          if (!filter.activeFilters) filter.activeFilters = {};
+          acc[name] = filter;
+        }
+      } catch (error) {
+        console.error(`❌ Error adding filter "${name}" to collection:`, error);
+      }
       return acc;
     }, {});
   // Obtener quick filters activos del dashboard y de urgencia
