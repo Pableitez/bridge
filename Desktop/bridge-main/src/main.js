@@ -3240,36 +3240,56 @@ function applyDashboardQuickFilters() {
 
 // Helper: get the number of records that would result from applying a quick filter
 function getDashboardQuickFilterPreviewCount(name) {
-  const data = getOriginalData();
-  if (!data || !data.length) return 0;
-  
-  // Detectar qué hub está activo
-  const isDqHub = document.querySelector('#dqDashboardModal:not(.hidden)');
-  const isOpsHub = document.querySelector('#dashboardModal:not(.hidden)');
-  
-  let hubType;
-  if (isDqHub) {
-    hubType = 'dq';
-  } else if (isOpsHub) {
-    hubType = 'ops';
-  } else {
-    hubType = 'ops'; // Fallback
-  }
-  
-  // Load quick filters según el hub activo
-  const allQuickFilters = loadQuickFilters();
-  const quickFilters = Object.entries(allQuickFilters)
-    .filter(([name, filter]) => {
-      // For backward compatibility: if hubType is not defined, consider it as 'ops'
-      const filterHubType = filter.hubType || 'ops';
-      return filterHubType === hubType;
-    })
-    .reduce((acc, [name, filter]) => {
-      acc[name] = filter;
-      return acc;
-    }, {});
-  const filterObj = quickFilters[name];
-  if (!filterObj) return 0;
+  try {
+    const data = getOriginalData();
+    if (!data || !data.length) return 0;
+    
+    // Detectar qué hub está activo
+    const isDqHub = document.querySelector('#dqDashboardModal:not(.hidden)');
+    const isOpsHub = document.querySelector('#dashboardModal:not(.hidden)');
+    
+    let hubType;
+    if (isDqHub) {
+      hubType = 'dq';
+    } else if (isOpsHub) {
+      hubType = 'ops';
+    } else {
+      hubType = 'ops'; // Fallback
+    }
+    
+    // Load quick filters según el hub activo
+    let allQuickFilters = {};
+    try {
+      allQuickFilters = loadQuickFilters();
+    } catch (error) {
+      console.error('❌ Error loading quick filters in preview count:', error);
+      return 0;
+    }
+    
+    const quickFilters = Object.entries(allQuickFilters)
+      .filter(([name, filter]) => {
+        try {
+          if (!filter || typeof filter !== 'object') return false;
+          // For backward compatibility: if hubType is not defined, consider it as 'ops'
+          const filterHubType = filter.hubType || 'ops';
+          return filterHubType === hubType;
+        } catch (error) {
+          console.error(`❌ Error processing filter "${name}" in preview:`, error);
+          return false;
+        }
+      })
+      .reduce((acc, [name, filter]) => {
+        try {
+          if (filter && typeof filter === 'object') {
+            acc[name] = filter;
+          }
+        } catch (error) {
+          console.error(`❌ Error adding filter "${name}" in preview:`, error);
+        }
+        return acc;
+      }, {});
+    const filterObj = quickFilters[name];
+    if (!filterObj) return 0;
   
   // Guardar el estado actual de filtros
   const currentActiveFilters = { ...getModuleActiveFilters() };
