@@ -2252,6 +2252,12 @@ function generateFilterSidebar(headers) {
           const quickFilters = loadQuickFilters();
           const filterObj = quickFilters[name];
           if (filterObj) {
+            // Debug: Check for NOT states in saved filter
+            const notStates = Object.keys(filterObj.filterValues).filter(key => key.endsWith('_not'));
+            if (notStates.length > 0) {
+              console.log(`[applyQuickFilter] Applying quick filter "${name}" with NOT states:`, notStates);
+            }
+            
             setModuleFilterValues({ ...filterObj.filterValues });
             // Reconstruir activeFilters
             const newActiveFilters = {};
@@ -2980,21 +2986,19 @@ function saveQuickFilter(name, urgencyCard, container, containerTitle, hubType =
   const headers = Object.keys(getOriginalData()[0] || {});
   const filterValues = { ...getModuleFilterValues() };
   const activeFilters = { ...getModuleActiveFilters() };
+  
+  // Debug: Verify NOT states are included in filterValues
+  const notStates = Object.keys(filterValues).filter(key => key.endsWith('_not'));
+  if (notStates.length > 0) {
+    console.log(`[saveQuickFilter] Saving quick filter "${name}" with NOT states:`, notStates);
+  }
+  
   const quickFilters = loadQuickFilters();
   const filterObj = { filterValues, activeFilters, headers, hubType };
   if (urgencyCard && urgencyCard !== 'Ninguna') filterObj.linkedUrgencyCard = urgencyCard;
-  // Always save container, even if empty (use default if not provided)
-  filterObj.container = container || (hubType === 'dq' ? 'dq-default' : 'default');
+  if (container) filterObj.container = container;
   if (containerTitle) filterObj.containerTitle = containerTitle;
   quickFilters[name] = filterObj;
-  
-  // Debug: Log filterObj to verify NOT states are saved
-  console.log(`[DEBUG] Saving quick filter "${name}":`, {
-    hasNotStates: Object.keys(filterValues).some(k => k.endsWith('_not')),
-    container: filterObj.container,
-    filterValuesKeys: Object.keys(filterValues).filter(k => k.endsWith('_not'))
-  });
-  
   localStorage.setItem('quickFilters', JSON.stringify(quickFilters));
   
   // Trigger auto-save
