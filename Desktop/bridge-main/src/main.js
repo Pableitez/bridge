@@ -3377,9 +3377,6 @@ function getDashboardQuickFilterPreviewCount(name) {
       console.error('❌ Error restoring filter state:', restoreError);
     }
     return 0;
-  } catch (outerError) {
-    console.error(`❌ Outer error in getDashboardQuickFilterPreviewCount for "${name}":`, outerError);
-    return 0;
   }
 }
 
