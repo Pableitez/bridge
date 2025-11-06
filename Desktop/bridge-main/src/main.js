@@ -3061,7 +3061,13 @@ function renderDashboardQuickFilters() {
         letter-spacing: 0.01em !important;
         text-align: center !important;
       `;
-      value.textContent = sameColumns ? getDashboardQuickFilterPreviewCount(name).toLocaleString() : '-';
+      try {
+        const count = sameColumns ? getDashboardQuickFilterPreviewCount(name) : 0;
+        value.textContent = sameColumns ? count.toLocaleString() : '-';
+      } catch (error) {
+        console.error(`❌ Error getting preview count for filter "${name}":`, error);
+        value.textContent = '-';
+      }
       card.appendChild(value);
 
       // Delete button
@@ -3328,18 +3334,33 @@ function getDashboardQuickFilterPreviewCount(name) {
   });
   
   // Aplicar la combinación de filtros
-  setModuleActiveFilters(combinedActiveFilters);
-  setModuleFilterValues(combinedFilterValues);
-  
-  // Obtener el número de filas filtradas usando la función estándar
-  const filteredData = getFilteredData();
-  const count = filteredData.length;
-  
-  // Restaurar el estado original de filtros
-  setModuleActiveFilters(currentActiveFilters);
-  setModuleFilterValues(currentFilterValues);
-  
-  return count;
+  try {
+    setModuleActiveFilters(combinedActiveFilters);
+    setModuleFilterValues(combinedFilterValues);
+    
+    // Obtener el número de filas filtradas usando la función estándar
+    const filteredData = getFilteredData();
+    const count = filteredData ? filteredData.length : 0;
+    
+    // Restaurar el estado original de filtros
+    setModuleActiveFilters(currentActiveFilters);
+    setModuleFilterValues(currentFilterValues);
+    
+    return count;
+  } catch (error) {
+    console.error(`❌ Error calculating preview count for filter "${name}":`, error);
+    // Restaurar el estado original de filtros en caso de error
+    try {
+      setModuleActiveFilters(currentActiveFilters);
+      setModuleFilterValues(currentFilterValues);
+    } catch (restoreError) {
+      console.error('❌ Error restoring filter state:', restoreError);
+    }
+    return 0;
+  } catch (error) {
+    console.error(`❌ Error in getDashboardQuickFilterPreviewCount for "${name}":`, error);
+    return 0;
+  }
 }
 
 // Genera un resumen textual del filtro
