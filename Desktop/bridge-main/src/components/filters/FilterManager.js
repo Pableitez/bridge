@@ -2504,7 +2504,19 @@ function applyFilters() {
         } else {
             const value = moduleFilterValues[column];
             const isNotFilter = moduleFilterValues[`${column}_not`];
-            if (!value || (Array.isArray(value) && value.length === 0)) return;
+            // Allow filtering even if only __NO_EMPTY__ or __EMPTY__ is selected
+            if (!value) return;
+            if (Array.isArray(value) && value.length === 0) return;
+            // Special case: if array only contains __NO_EMPTY__ or __EMPTY__, still apply filter
+            if (Array.isArray(value) && value.length === 1 && (value[0] === '__NO_EMPTY__' || value[0] === '__EMPTY__')) {
+                // Continue to apply filter
+            } else if (Array.isArray(value) && value.length > 0) {
+                // Check if array has any real values (not just markers)
+                const hasRealValues = value.some(v => v !== '__NO_EMPTY__' && v !== '__EMPTY__');
+                if (!hasRealValues && !value.includes('__NO_EMPTY__') && !value.includes('__EMPTY__')) {
+                    return; // No real values and no special markers
+                }
+            }
             filteredData = filteredData.filter(row => {
                 const cellValue = row[column];
                 
@@ -2512,26 +2524,27 @@ function applyFilters() {
                 if (Array.isArray(value)) {
                     const isEmpty = cellValue === '' || cellValue === null || cellValue === undefined;
                     
-                    // Handle __EMPTY__ filter
-                    if (value.includes('__EMPTY__') && isEmpty) {
-                        matches = true;
-                    }
-                    // Handle __NO_EMPTY__ filter
-                    else if (value.includes('__NO_EMPTY__')) {
+                    // Handle __NO_EMPTY__ filter - MUST be checked first
+                    if (value.includes('__NO_EMPTY__')) {
+                        // If cell is empty, always exclude it when __NO_EMPTY__ is selected
                         if (isEmpty) {
-                            // If cell is empty and __NO_EMPTY__ is selected, exclude it
                             matches = false;
                         } else {
-                            // If cell is not empty, check if value is in the array (excluding special markers)
+                            // Cell is not empty
+                            // Get actual values (excluding special markers)
                             const actualValues = value.filter(v => v !== '__NO_EMPTY__' && v !== '__EMPTY__');
                             if (actualValues.length === 0) {
-                                // If only __NO_EMPTY__ is selected (no other values), include all non-empty values
+                                // If ONLY __NO_EMPTY__ is selected (no other values), include ALL non-empty values
                                 matches = true;
                             } else {
-                                // Check if cell value matches any of the selected values
+                                // __NO_EMPTY__ + other values: cell must match one of the selected values
                                 matches = actualValues.includes(cellValue?.toString());
                             }
                         }
+                    }
+                    // Handle __EMPTY__ filter
+                    else if (value.includes('__EMPTY__') && isEmpty) {
+                        matches = true;
                     }
                     // Normal case: check if value is in the array
                     else {
@@ -3039,26 +3052,27 @@ function getFilteredData() {
       if (Array.isArray(value)) {
         const isEmpty = cellValue === '' || cellValue === null || cellValue === undefined;
         
-        // Handle __EMPTY__ filter
-        if (value.includes('__EMPTY__') && isEmpty) {
-          return true;
-        }
-        // Handle __NO_EMPTY__ filter
-        else if (value.includes('__NO_EMPTY__')) {
+        // Handle __NO_EMPTY__ filter - MUST be checked first
+        if (value.includes('__NO_EMPTY__')) {
+          // If cell is empty, always exclude it when __NO_EMPTY__ is selected
           if (isEmpty) {
-            // If cell is empty and __NO_EMPTY__ is selected, exclude it
             return false;
           } else {
-            // If cell is not empty, check if value is in the array (excluding special markers)
+            // Cell is not empty
+            // Get actual values (excluding special markers)
             const actualValues = value.filter(v => v !== '__NO_EMPTY__' && v !== '__EMPTY__');
             if (actualValues.length === 0) {
-              // If only __NO_EMPTY__ is selected (no other values), include all non-empty values
+              // If ONLY __NO_EMPTY__ is selected (no other values), include ALL non-empty values
               return true;
             } else {
-              // Check if cell value matches any of the selected values
+              // __NO_EMPTY__ + other values: cell must match one of the selected values
               return actualValues.includes(cellValue?.toString());
             }
           }
+        }
+        // Handle __EMPTY__ filter
+        else if (value.includes('__EMPTY__') && isEmpty) {
+          return true;
         }
         // Normal case: check if value is in the array
         else {
