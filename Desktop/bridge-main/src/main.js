@@ -2951,31 +2951,45 @@ function renderDashboardQuickFilters() {
   
   // Agrupar filtros por contenedor
   Object.entries(quickFilters).forEach(([name, filterObj]) => {
-    // Solo incluir si tiene un campo container definido y no vacío
-    // Si no tiene container, usar el default según el hub
-    if (!filterObj.container || filterObj.container === '') {
-      // Asignar container por defecto si no tiene uno
-      filterObj.container = hubType === 'dq' ? 'dq-default' : 'default';
-    }
-    const key = filterObj.container;
-    
-    // Debug: Log if filter has NOT states
-    if (filterObj.filterValues) {
-      const hasNotStates = Object.keys(filterObj.filterValues).some(k => k.endsWith('_not'));
-      if (hasNotStates) {
-        console.log(`[DEBUG] Quick filter "${name}" has NOT states, container: ${key}`);
+    try {
+      // Validate filterObj structure
+      if (!filterObj || typeof filterObj !== 'object') {
+        console.warn(`⚠️ Invalid filterObj for "${name}", skipping`);
+        return;
       }
+      
+      // Ensure filterValues and activeFilters exist
+      if (!filterObj.filterValues) filterObj.filterValues = {};
+      if (!filterObj.activeFilters) filterObj.activeFilters = {};
+      
+      // Solo incluir si tiene un campo container definido y no vacío
+      // Si no tiene container, usar el default según el hub
+      if (!filterObj.container || filterObj.container === '') {
+        // Asignar container por defecto si no tiene uno
+        filterObj.container = hubType === 'dq' ? 'dq-default' : 'default';
+      }
+      const key = filterObj.container;
+      
+      // Debug: Log if filter has NOT states
+      if (filterObj.filterValues) {
+        const hasNotStates = Object.keys(filterObj.filterValues).some(k => k.endsWith('_not'));
+        if (hasNotStates) {
+          console.log(`[DEBUG] Quick filter "${name}" has NOT states, container: ${key}`);
+        }
+      }
+      if (!grouped[key]) {
+        grouped[key] = { 
+          title: filterObj.containerTitle || key.replace('container', 'Container '),
+          filters: [] 
+        };
+      } else if (filterObj.containerTitle) {
+        // Actualizar el título si hay uno personalizado
+        grouped[key].title = filterObj.containerTitle;
+      }
+      grouped[key].filters.push({ name, filterObj });
+    } catch (error) {
+      console.error(`❌ Error processing quick filter "${name}" for grouping:`, error);
     }
-    if (!grouped[key]) {
-      grouped[key] = { 
-        title: filterObj.containerTitle || key.replace('container', 'Container '),
-        filters: [] 
-      };
-    } else if (filterObj.containerTitle) {
-      // Actualizar el título si hay uno personalizado
-      grouped[key].title = filterObj.containerTitle;
-    }
-    grouped[key].filters.push({ name, filterObj });
   });
 
   // Obtener columnas actuales para validación
