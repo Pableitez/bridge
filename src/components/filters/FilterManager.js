@@ -1713,6 +1713,15 @@ function generateFilterSidebar(headers) {
           notFilterContainer.appendChild(notFilterCheckbox);
           notFilterContainer.appendChild(notFilterLabel);
           
+          // Initialize NOT checkbox state from saved values
+          const notKey = `${selectedColumn}_not`;
+          const savedNotValue = getModuleFilterValues()[notKey];
+          if (savedNotValue) {
+            notFilterCheckbox.checked = true;
+            notFilterLabel.style.color = '#ff6b6b';
+            notFilterLabel.textContent = 'NOT (Exclude selected values) ✓';
+          }
+          
           // Add Filter functionality
           const addFilterContainer = document.createElement('div');
           addFilterContainer.className = 'add-filter-container';
@@ -2126,7 +2135,8 @@ function generateFilterSidebar(headers) {
             newActiveFilters[base] = 'date';
           } else if (Array.isArray(filterObj.filterValues[key])) {
             newActiveFilters[key] = 'categorical';
-          } else {
+          } else if (!key.endsWith('_not')) {
+            // Skip _not keys when reconstructing activeFilters (they're just flags)
             newActiveFilters[key] = 'text';
           }
         }
@@ -2248,11 +2258,15 @@ function generateFilterSidebar(headers) {
                 newActiveFilters[base] = 'date';
               } else if (Array.isArray(filterObj.filterValues[key])) {
                 newActiveFilters[key] = 'categorical';
-              } else {
+              } else if (!key.endsWith('_not')) {
+                // Skip _not keys when reconstructing activeFilters (they're just flags)
                 newActiveFilters[key] = 'text';
               }
             }
             setModuleActiveFilters(newActiveFilters);
+            // Regenerate sidebar to restore NOT checkbox states
+            const headers = Object.keys(getOriginalData()[0] || {});
+            generateFilterSidebar(headers);
             applyFilters();
             renderActiveFiltersSummaryChips();
             // Cierra el modal de filtros si está abierto
@@ -2490,18 +2504,50 @@ function applyFilters() {
         } else {
             const value = moduleFilterValues[column];
             const isNotFilter = moduleFilterValues[`${column}_not`];
-            if (!value || (Array.isArray(value) && value.length === 0)) return;
+            // Allow filtering even if only __NO_EMPTY__ or __EMPTY__ is selected
+            if (!value) return;
+            if (Array.isArray(value) && value.length === 0) return;
+            // Special case: if array only contains __NO_EMPTY__ or __EMPTY__, still apply filter
+            if (Array.isArray(value) && value.length === 1 && (value[0] === '__NO_EMPTY__' || value[0] === '__EMPTY__')) {
+                // Continue to apply filter
+            } else if (Array.isArray(value) && value.length > 0) {
+                // Check if array has any real values (not just markers)
+                const hasRealValues = value.some(v => v !== '__NO_EMPTY__' && v !== '__EMPTY__');
+                if (!hasRealValues && !value.includes('__NO_EMPTY__') && !value.includes('__EMPTY__')) {
+                    return; // No real values and no special markers
+                }
+            }
             filteredData = filteredData.filter(row => {
                 const cellValue = row[column];
-                if (cellValue === null || cellValue === undefined) return false;
                 
                 let matches = false;
                 if (Array.isArray(value)) {
-                    if (value.includes('__EMPTY__') && (cellValue === '' || cellValue === null || cellValue === undefined)) {
+                    const isEmpty = cellValue === '' || cellValue === null || cellValue === undefined;
+                    
+                    // Handle __NO_EMPTY__ filter - MUST be checked first
+                    if (value.includes('__NO_EMPTY__')) {
+                        // If cell is empty, always exclude it when __NO_EMPTY__ is selected
+                        if (isEmpty) {
+                            matches = false;
+                        } else {
+                            // Cell is not empty
+                            // Get actual values (excluding special markers)
+                            const actualValues = value.filter(v => v !== '__NO_EMPTY__' && v !== '__EMPTY__');
+                            if (actualValues.length === 0) {
+                                // If ONLY __NO_EMPTY__ is selected (no other values), include ALL non-empty values
+                                matches = true;
+                            } else {
+                                // __NO_EMPTY__ + other values: cell must match one of the selected values
+                                matches = actualValues.includes(cellValue?.toString());
+                            }
+                        }
+                    }
+                    // Handle __EMPTY__ filter
+                    else if (value.includes('__EMPTY__') && isEmpty) {
                         matches = true;
-                    } else if (value.includes('__NO_EMPTY__') && (cellValue === '' || cellValue === null || cellValue === undefined)) {
-                        matches = false;
-                    } else {
+                    }
+                    // Normal case: check if value is in the array
+                    else {
                         matches = value.includes(cellValue?.toString());
                     }
                 } else {
@@ -3002,12 +3048,36 @@ function getFilteredData() {
     if (!value || (Array.isArray(value) && value.length === 0)) return;
     filteredData = filteredData.filter(row => {
       const cellValue = row[column];
-      if (cellValue === null || cellValue === undefined) return false;
+      
       if (Array.isArray(value)) {
-        if (value.includes('__EMPTY__') && (cellValue === '' || cellValue === null || cellValue === undefined)) {
+        const isEmpty = cellValue === '' || cellValue === null || cellValue === undefined;
+        
+        // Handle __NO_EMPTY__ filter - MUST be checked first
+        if (value.includes('__NO_EMPTY__')) {
+          // If cell is empty, always exclude it when __NO_EMPTY__ is selected
+          if (isEmpty) {
+            return false;
+          } else {
+            // Cell is not empty
+            // Get actual values (excluding special markers)
+            const actualValues = value.filter(v => v !== '__NO_EMPTY__' && v !== '__EMPTY__');
+            if (actualValues.length === 0) {
+              // If ONLY __NO_EMPTY__ is selected (no other values), include ALL non-empty values
+              return true;
+            } else {
+              // __NO_EMPTY__ + other values: cell must match one of the selected values
+              return actualValues.includes(cellValue?.toString());
+            }
+          }
+        }
+        // Handle __EMPTY__ filter
+        else if (value.includes('__EMPTY__') && isEmpty) {
           return true;
         }
-        return value.includes(cellValue?.toString());
+        // Normal case: check if value is in the array
+        else {
+          return value.includes(cellValue?.toString());
+        }
       }
       switch (filterType) {
         case 'text':
