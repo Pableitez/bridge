@@ -3274,9 +3274,14 @@ function getDashboardQuickFilterPreviewCount(name) {
   const combinedFilterValues = { ...currentFilterValues };
   
   // Añadir los filtros del quick filter
-  const filterValues = filterObj.filterValues;
+  const filterValues = filterObj.filterValues || {};
   
   Object.entries(filterValues).forEach(([key, value]) => {
+    // Skip _not keys - they are metadata, not actual filter columns
+    if (key.endsWith('_not')) {
+      return;
+    }
+    
     // Usar el tipo de filtro guardado si está disponible
     const savedActiveFilters = filterObj.activeFilters || {};
     if (savedActiveFilters[key]) {

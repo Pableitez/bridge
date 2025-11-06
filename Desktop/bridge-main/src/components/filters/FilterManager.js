@@ -3047,6 +3047,11 @@ function getFilteredData() {
 
   // --- RESTO DE FILTROS POR COLUMNA ---
   Object.entries(activeFilters).forEach(([column, filterType]) => {
+    // Skip _not keys - they are metadata, not actual filter columns
+    if (column.endsWith('_not')) {
+      return;
+    }
+    
     if (filterType === 'date') {
       const start = resolveDynamicValue(filterValues[`${column}_start`]);
       const end = resolveDynamicValue(filterValues[`${column}_end`]);
@@ -3109,12 +3114,20 @@ function getFilteredData() {
       }
       switch (filterType) {
         case 'text':
+          // Handle undefined/null cellValue
+          if (cellValue === undefined || cellValue === null) {
+            return false;
+          }
           return normalizeText(cellValue.toString()).includes(normalizeText(value));
         case 'number':
           const numValue = parseFloat(value);
           const cellNum = parseFloat(cellValue);
           return !isNaN(numValue) && !isNaN(cellNum) && cellNum === numValue;
         case 'categorical':
+          // Handle undefined/null cellValue
+          if (cellValue === undefined || cellValue === null) {
+            return false;
+          }
           const selectedValues = value.split(',').map(v => v.trim());
           return selectedValues.includes(cellValue.toString());
         default:
