@@ -3081,6 +3081,15 @@ function getFilteredData() {
     filteredData = filteredData.filter(row => {
       const cellValue = row[column];
       
+      // Safety check: if cellValue is undefined or null, handle it
+      if (cellValue === undefined || cellValue === null) {
+        // Only include if __EMPTY__ is selected, otherwise exclude
+        if (Array.isArray(value) && value.includes('__EMPTY__')) {
+          return true;
+        }
+        return false;
+      }
+      
       if (Array.isArray(value)) {
         const isEmpty = cellValue === '' || cellValue === null || cellValue === undefined;
         
@@ -3113,12 +3122,16 @@ function getFilteredData() {
       }
       switch (filterType) {
         case 'text':
+          // Safety check before calling toString
+          if (cellValue === undefined || cellValue === null) return false;
           return normalizeText(cellValue.toString()).includes(normalizeText(value));
         case 'number':
+          if (cellValue === undefined || cellValue === null) return false;
           const numValue = parseFloat(value);
           const cellNum = parseFloat(cellValue);
           return !isNaN(numValue) && !isNaN(cellNum) && cellNum === numValue;
         case 'categorical':
+          if (cellValue === undefined || cellValue === null) return false;
           const selectedValues = value.split(',').map(v => v.trim());
           return selectedValues.includes(cellValue.toString());
         default:
